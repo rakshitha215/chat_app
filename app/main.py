@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
 from sqlalchemy.orm import Session
 from datetime import datetime
 import json
@@ -7,31 +7,25 @@ from app.database import SessionLocal, Base, engine
 from app.models import Message
 from app.auth import get_current_user, verify_token
 from app.user import router as user_router
-from app.manager import ConnectionManager
+
+# =========================
+# App init
+# =========================
+app = FastAPI()
+Base.metadata.create_all(bind=engine)
+
+# ✅ include user APIs (REGISTER / LOGIN)
+app.include_router(user_router)
 
 # =========================
 # Dummy group data
 # =========================
 groups = {
-    1: [1, 2],  # Group 1 has user 1 and user 2
+    1: [1, 2],
 }
 
 # =========================
-# App initialization
-# =========================
-app = FastAPI()
-
-# Create DB tables
-Base.metadata.create_all(bind=engine)
-
-# WebSocket manager
-manager = ConnectionManager()
-
-# Include routers
-app.include_router(user_router)
-
-# =========================
-# DB Dependency
+# DB dependency
 # =========================
 def get_db():
     db = SessionLocal()
@@ -41,7 +35,26 @@ def get_db():
         db.close()
 
 # =========================
-# WebSocket Endpoint
+# Connection Manager
+# =========================
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections = {}
+
+    async def connect(self, user_id, websocket):
+        self.active_connections[user_id] = websocket
+
+    def disconnect(self, user_id):
+        self.active_connections.pop(user_id, None)
+
+    async def send_personal_message(self, message, user_id):
+        if user_id in self.active_connections:
+            await self.active_connections[user_id].send_text(message)
+
+manager = ConnectionManager()
+
+# =========================
+# WebSocket
 # =========================
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, token: str):
@@ -54,46 +67,72 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
 
     try:
         while True:
-            data = await websocket.receive_text()
-            message = json.loads(data)
+            data = json.loads(await websocket.receive_text())
 
-            group_id = message["group_id"]
-            content = message["content"]
+            msg_type = data.get("type")
+            content = data.get("content")
 
-            if group_id in groups:
-                users = groups[group_id]
+            # 🔹 GROUP CHAT
+            if msg_type == "group":
+                group_id = data.get("group_id")
 
-                for uid in users:
-                    await manager.send_personal_message(
-                        json.dumps({
-                            "type": "message",
-                            "sender_id": user_id,
-                            "group_id": group_id,
-                            "content": content
-                        }),
-                        uid
-                    )
+                if group_id in groups:
+                    for uid in groups[group_id]:
+                        await manager.send_personal_message(
+                            json.dumps({
+                                "type": "group",
+                                "sender_id": user_id,
+                                "group_id": group_id,
+                                "content": content
+                            }),
+                            uid
+                        )
+
+            # 🔹 PRIVATE CHAT
+            elif msg_type == "private":
+                receiver_id = data.get("receiver_id")
+
+                # Save to DB
+                db = SessionLocal()
+                msg = Message(
+                    sender_id=user_id,
+                    receiver_id=receiver_id,
+                    content=content,
+                    timestamp=datetime.utcnow()
+                )
+                db.add(msg)
+                db.commit()
+                db.close()
+
+                # send to receiver
+                await manager.send_personal_message(
+                    json.dumps({
+                        "type": "private",
+                        "sender_id": user_id,
+                        "receiver_id": receiver_id,
+                        "content": content
+                    }),
+                    receiver_id
+                )
+
+                # send to sender
+                await manager.send_personal_message(
+                    json.dumps({
+                        "type": "private",
+                        "sender_id": user_id,
+                        "receiver_id": receiver_id,
+                        "content": content
+                    }),
+                    user_id
+                )
 
     except WebSocketDisconnect:
         manager.disconnect(user_id)
 
 # =========================
-# APIs
+# REST APIs (keep these)
 # =========================
 
-@app.get("/status/{user_id}")
-def get_user_status(user_id: int):
-    return manager.get_status(user_id)
-
-
-@app.get("/")
-def home():
-    return {"message": "Chat backend is running 🚀"}
-
-
-# =========================
-# Send Private Message (REST)
-# =========================
 @app.post("/send")
 def send_message(
     receiver_id: int,
@@ -101,25 +140,17 @@ def send_message(
     user=Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if user["id"] == receiver_id:
-        return {"error": "Cannot send message to yourself ❌"}
-
-    message = Message(
+    msg = Message(
         sender_id=user["id"],
         receiver_id=receiver_id,
         content=content,
         timestamp=datetime.utcnow()
     )
-
-    db.add(message)
+    db.add(msg)
     db.commit()
 
-    return {"status": "Message sent ✅"}
+    return {"status": "Message saved ✅"}
 
-
-# =========================
-# Chat History API
-# =========================
 @app.get("/chat/{user_id}")
 def get_chat(
     user_id: int,
@@ -132,3 +163,7 @@ def get_chat(
     ).all()
 
     return messages
+
+@app.get("/")
+def home():
+    return {"message": "Chat backend is running 🚀"}
