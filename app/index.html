@@ -1,0 +1,296 @@
+<!-- <!DOCTYPE html>
+<html>
+<head>
+    <title>Chat App</title>
+
+    <style>
+        body {
+            font-family: Arial;
+        }
+
+        #chat {
+            width: 350px;
+            height: 400px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            margin-top: 10px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 8px 12px;
+            margin: 5px;
+            border-radius: 10px;
+        }
+
+        .me {
+            align-self: flex-end;
+            background-color: #dcf8c6;
+        }
+
+        .other {
+            align-self: flex-start;
+            background-color: #f1f1f1;
+        }
+
+        .input-area {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>💬 Simple Chat App</h2>
+
+<div class="input-area">
+    <input id="group" placeholder="Group ID (e.g., 1)" />
+    <br><br>
+    <input id="message" placeholder="Type message..." />
+    <button onclick="sendMessage()">Send</button>
+</div>
+
+<div id="chat"></div>
+
+<script>
+let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjp7ImlkIjoyLCJ1c2VybmFtZSI6ImdpcmlqYSJ9fQ.zL8dsBQ588ffXzNBu-hIUWjt_LXPKsH3uDIBr5DIrU4";
+
+// ✅ Extract user ID from token (AUTO)
+function getMyId() {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.user_id.id;
+}
+
+function connectWebSocket() {
+    ws = new WebSocket(`ws://127.0.0.1:8000/ws?token=${token}`);
+
+    ws.onopen = () => {
+        console.log("Connected ✅ | My ID:", getMyId());
+    };
+
+    ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        console.log("Received:", data);
+
+        displayMessage(data.sender_id, data.content, data.group_id);
+    };
+
+    ws.onclose = () => {
+        console.log("Connection closed ❌");
+    };
+}
+
+// ✅ Display function
+function displayMessage(senderId, content, groupId) {
+    const chatBox = document.getElementById("chat");
+
+    const msg = document.createElement("div");
+    msg.classList.add("message");
+
+    if (senderId === getMyId()) {
+        msg.classList.add("me");
+        msg.textContent = "Me: " + content;
+    } else {
+        msg.classList.add("other");
+        msg.textContent = "Group " + groupId + " | User " + senderId + ": " + content;
+    }
+
+    chatBox.appendChild(msg);
+
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// ✅ Send message
+function sendMessage() {
+    let group = document.getElementById("group").value;
+    let msg = document.getElementById("message").value;
+
+    if (!msg || !group) return;
+
+    ws.send(JSON.stringify({
+        group_id: parseInt(group),
+        content: msg
+    }));
+
+    document.getElementById("message").value = "";
+}
+async function loadStatus(userId) {
+    let res = await fetch(`http://127.0.0.1:8000/status/${userId}`);
+    let data = await res.json();
+
+    if (data.status === "online") {
+        console.log("🟢 Online");
+    } else {
+        console.log("🔴 Offline | Last seen:", data.last_seen);
+    }
+}
+
+// Auto connect
+connectWebSocket();
+</script>
+</body>
+</html> -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat App</title>
+
+    <style>
+        body {
+            font-family: Arial;
+        }
+
+        #chat {
+            width: 350px;
+            height: 400px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            margin-top: 10px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 8px 12px;
+            margin: 5px;
+            border-radius: 10px;
+        }
+
+        .me {
+            align-self: flex-end;
+            background-color: #dcf8c6;
+        }
+
+        .other {
+            align-self: flex-start;
+            background-color: #f1f1f1;
+        }
+
+        .input-area {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>💬 Simple Chat App</h2>
+
+<div class="input-area">
+    <input id="group" placeholder="Group ID (e.g., 1)" />
+    <br><br>
+    <input id="message" placeholder="Type message..." />
+    <button onclick="sendMessage()">Send</button>
+</div>
+
+<div id="chat"></div>
+
+<script>
+let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjp7ImlkIjoyLCJ1c2VybmFtZSI6IkIifX0.NOjM28MAGyAJ9rW-MFfkUv-wZFTRPWxyF3neHrC68vY";
+
+// ✅ Safe decode JWT user ID
+function getMyId() {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.user_id?.id || null;
+    } catch (err) {
+        console.error("Invalid token:", err);
+        return null;
+    }
+}
+
+// ✅ WebSocket connection
+function connectWebSocket() {
+    if (!token) {
+        console.error("No token found");
+        return;
+    }
+
+    ws = new WebSocket(`ws://127.0.0.1:8000/ws?token=${token}`);
+
+    ws.onopen = () => {
+        console.log("Connected ✅ | My ID:", getMyId());
+    };
+
+    ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        displayMessage(data.sender_id, data.content, data.group_id);
+    };
+
+    ws.onerror = (err) => {
+        console.error("WebSocket error:", err);
+    };
+
+    ws.onclose = () => {
+        console.log("Connection closed ❌");
+    };
+}
+
+// ✅ Display message in UI
+function displayMessage(senderId, content, groupId) {
+    const chatBox = document.getElementById("chat");
+
+    const msg = document.createElement("div");
+    msg.classList.add("message");
+
+    if (senderId === getMyId()) {
+        msg.classList.add("me");
+        msg.textContent = "Me: " + content;
+    } else {
+        msg.classList.add("other");
+        msg.textContent = "Group " + groupId + " | User " + senderId + ": " + content;
+    }
+
+    chatBox.appendChild(msg);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// ✅ Send message
+function sendMessage() {
+    let group = document.getElementById("group").value;
+    let msg = document.getElementById("message").value;
+
+    if (!msg || !group) return;
+
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+        console.error("WebSocket not connected");
+        return;
+    }
+
+    ws.send(JSON.stringify({
+        group_id: parseInt(group),
+        content: msg
+    }));
+
+    document.getElementById("message").value = "";
+}
+
+// ❌ OPTIONAL: status API (not required but kept ready)
+async function loadStatus(userId) {
+    try {
+        let res = await fetch(`http://127.0.0.1:8000/status/${userId}`);
+        let data = await res.json();
+
+        if (data.status === "online") {
+            console.log("🟢 Online");
+        } else {
+            console.log("🔴 Offline | Last seen:", data.last_seen);
+        }
+
+        return data;
+    } catch (err) {
+        console.error("Status error:", err);
+    }
+}
+
+// 🚀 Start app
+connectWebSocket();
+</script>
+
+</body>
+</html>
