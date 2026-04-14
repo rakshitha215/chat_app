@@ -1,293 +1,33 @@
-<!-- <!DOCTYPE html>
-<html>
-<head>
-    <title>Chat App</title>
-
-    <style>
-        body { font-family: Arial; }
-
-        #chat {
-            width: 350px;
-            height: 400px;
-            border: 1px solid #ccc;
-            padding: 10px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            margin-top: 10px;
-        }
-
-        .message {
-            max-width: 70%;
-            padding: 8px 12px;
-            margin: 5px;
-            border-radius: 10px;
-        }
-
-        .me {
-            align-self: flex-end;
-            background-color: #dcf8c6;
-        }
-
-        .other {
-            align-self: flex-start;
-            background-color: #f1f1f1;
-        }
-
-        .input-area { margin-top: 10px; }
-    </style>
-</head>
-
-<body>
-
-<h2>💬 Chat App (Group + Private)</h2>
-
-<div class="input-area">
-    <input id="group" placeholder="Group ID (optional)" />
-    <br><br>
-    <input id="receiver" placeholder="Receiver ID (for private)" />
-    <br><br>
-    <input id="message" placeholder="Type message..." />
-    <button onclick="sendMessage()">Send</button>
-    <button onclick="clearChat()">Clear</button>
-</div>
-
-<div id="chat"></div>
-
-<script>
-// ✅ GET TOKEN FROM URL
-const urlParams = new URLSearchParams(window.location.search);
-let token = urlParams.get("token");
-
-if (!token) {
-    alert("Token missing in URL!");
-}
-
-// ✅ GET USER ID FROM TOKEN
-function getMyId() {
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        return payload.user_id?.id;
-    } catch {
-        return null;
-    }
-}
-
-let ws;
-
-// ✅ LOAD MESSAGES FROM LOCAL STORAGE
-let messages = JSON.parse(localStorage.getItem("messages")) || [];
-
-// ✅ CONNECT WEBSOCKET
-function connectWebSocket() {
-    if (ws && ws.readyState === WebSocket.OPEN) return;
-
-    ws = new WebSocket(`ws://127.0.0.1:8000/ws?token=${token}`);
-
-    ws.onopen = () => {
-        console.log("Connected ✅ | My ID:", getMyId());
-    };
-
-    ws.onmessage = (e) => {
-        const data = JSON.parse(e.data);
-        console.log("Received:", data);
-
-        messages.push(data);
-
-        // ✅ SAVE TO LOCAL STORAGE
-        localStorage.setItem("messages", JSON.stringify(messages));
-
-        renderMessages();
-    };
-
-    ws.onclose = () => {
-        console.log("Disconnected ❌");
-    };
-
-    ws.onerror = (err) => {
-        console.error("WebSocket error:", err);
-    };
-}
-
-// ✅ SEND MESSAGE
-function sendMessage() {
-    let group = document.getElementById("group").value;
-    let receiver = document.getElementById("receiver").value;
-    let msg = document.getElementById("message").value;
-
-    if (!msg) return;
-
-    if (group) {
-        ws.send(JSON.stringify({
-            type: "group",
-            group_id: parseInt(group),
-            content: msg
-        }));
-    } 
-    else if (receiver) {
-        ws.send(JSON.stringify({
-            type: "private",
-            receiver_id: parseInt(receiver),
-            content: msg
-        }));
-    } 
-    else {
-        alert("Enter Group ID or Receiver ID");
-        return;
-    }
-
-    document.getElementById("message").value = "";
-}
-
-// ✅ RENDER MESSAGES
-function renderMessages() {
-    console.log("Rendering...");
-
-    const chatBox = document.getElementById("chat");
-    chatBox.innerHTML = "";
-
-    messages.forEach(data => {
-        const msg = document.createElement("div");
-        msg.classList.add("message");
-
-        if (data.sender_id === getMyId()) {
-            msg.classList.add("me");
-            msg.textContent = "Me: " + data.content;
-        } else {
-            msg.classList.add("other");
-
-            if (data.type === "group") {
-                msg.textContent =
-                    "Group " + data.group_id +
-                    " | User " + data.sender_id + ": " + data.content;
-            } 
-            else if (data.type === "private") {
-                msg.textContent =
-                    "Private | User " + data.sender_id +
-                    ": " + data.content;
-            } 
-            else {
-                msg.textContent =
-                    "User " + data.sender_id +
-                    ": " + data.content;
-            }
-        }
-
-        chatBox.appendChild(msg);
-    });
-
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-// ✅ CLEAR CHAT
-function clearChat() {
-    localStorage.removeItem("messages");
-    messages = [];
-    renderMessages();
-}
-
-// 🚀 START
-connectWebSocket();
-renderMessages();
-</script>
-
-</body>
-</html> -->
 <!DOCTYPE html>
 <html>
 <head>
 <title>Chat App Pro</title>
 
 <style>
-body {
-    margin: 0;
-    font-family: Arial;
-    background: #ece5dd;
-}
-
-.app {
-    display: flex;
-    height: 100vh;
-}
+body { margin: 0; font-family: Arial; background: #ece5dd; }
+.app { display: flex; height: 100vh; }
 
 /* Sidebar */
-.sidebar {
-    width: 280px;
-    background: #075e54;
-    color: white;
-}
+.sidebar { width: 280px; background: #075e54; color: white; }
+.sidebar h2 { padding: 15px; margin: 0; }
 
-.sidebar h2 {
-    padding: 15px;
-    margin: 0;
-}
-
-.user {
-    padding: 12px;
-    cursor: pointer;
-}
-
-.user:hover {
-    background: #128c7e;
-}
-
-.user.active {
-    background: #25d366;
-}
+.user { padding: 12px; cursor: pointer; border-bottom: 1px solid #0b3d36; }
+.user:hover { background: #128c7e; }
+.user.active { background: #25d366; }
 
 /* Chat */
-.chat-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.chat-header {
-    background: #ededed;
-    padding: 15px;
-    font-weight: bold;
-}
-
-.chat-box {
-    flex: 1;
-    padding: 15px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-}
+.chat-container { flex: 1; display: flex; flex-direction: column; }
+.chat-header { background: #ededed; padding: 15px; font-weight: bold; }
+.chat-box { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; }
 
 /* Messages */
-.message {
-    max-width: 60%;
-    padding: 10px;
-    margin: 5px;
-    border-radius: 10px;
-}
-
-.me {
-    align-self: flex-end;
-    background: #dcf8c6;
-}
-
-.other {
-    align-self: flex-start;
-    background: white;
-}
+.message { max-width: 60%; padding: 10px; margin: 5px; border-radius: 10px; }
+.me { align-self: flex-end; background: #dcf8c6; }
+.other { align-self: flex-start; background: white; }
 
 /* Input */
-.input-area {
-    display: flex;
-    padding: 10px;
-    background: #f0f0f0;
-}
-
-.input-area input {
-    flex: 1;
-    padding: 10px;
-    border-radius: 20px;
-    border: none;
-}
-
+.input-area { display: flex; padding: 10px; background: #f0f0f0; }
+.input-area input { flex: 1; padding: 10px; border-radius: 20px; border: none; }
 .input-area button {
     margin-left: 10px;
     padding: 10px 15px;
@@ -304,13 +44,11 @@ body {
 
 <div class="app">
 
-<!-- Sidebar -->
 <div class="sidebar">
     <h2>Chats</h2>
     <div id="userList"></div>
 </div>
 
-<!-- Chat -->
 <div class="chat-container">
     <div class="chat-header" id="chatTitle">Select Chat</div>
     <div class="chat-box" id="chat"></div>
@@ -327,7 +65,6 @@ body {
 // 🔹 TOKEN
 const urlParams = new URLSearchParams(window.location.search);
 let token = urlParams.get("token");
-
 if (!token) alert("Token missing");
 
 // 🔹 USER ID
@@ -339,7 +76,7 @@ function getMyId() {
 let ws;
 let currentChat = null;
 
-// 🔹 USERS (demo)
+// 🔹 USERS
 let users = [1, 2];
 
 // 🔹 STORAGE
@@ -358,25 +95,31 @@ function loadUsers() {
         }
     });
 
-    // ✅ Auto select first chat
     setTimeout(() => {
         const first = document.querySelector(".user");
         if (first) first.click();
     }, 100);
 }
 
+// 🔹 CREATE USER
 function createUser(name, id) {
     const div = document.createElement("div");
     div.className = "user";
-    div.innerText = name;
 
-    div.onclick = function () {
+    div.innerHTML = `
+        <div style="font-weight:bold">${name}</div>
+        <div style="font-size:12px;opacity:0.7" id="last-${id}">
+            No messages yet
+        </div>
+    `;
+
+    div.onclick = async function () {
         currentChat = id;
 
         document.querySelectorAll(".user").forEach(el => el.classList.remove("active"));
         this.classList.add("active");
 
-        document.getElementById("chatTitle").innerText = name;
+        await updateHeader();   // ✅ FIX
 
         renderMessages();
     };
@@ -384,7 +127,7 @@ function createUser(name, id) {
     document.getElementById("userList").appendChild(div);
 }
 
-// 🔹 CONNECT
+// 🔹 CONNECT WS
 function connectWebSocket() {
     ws = new WebSocket(`ws://127.0.0.1:8000/ws?token=${token}`);
 
@@ -395,28 +138,33 @@ function connectWebSocket() {
     ws.onmessage = (e) => {
         const data = JSON.parse(e.data);
 
-        let key;
-
-        if (data.type === "group") {
-            key = "group";
-        } else {
-            // ✅ FINAL FIX (consistent key)
-            key = [data.sender_id, data.receiver_id].sort().join("_");
+        // ✍️ Typing
+        if (data.type === "typing") {
+            if (currentChat === data.sender_id) showTyping();
+            return;
         }
 
-        if (!key) return;
+        let key = data.type === "group"
+            ? "group"
+            : [data.sender_id, data.receiver_id].sort().join("_");
 
         if (!chats[key]) chats[key] = [];
-
         chats[key].push(data);
 
         localStorage.setItem("chats", JSON.stringify(chats));
 
-        renderMessages();
-    };
+        // update sidebar
+        let last = document.getElementById(`last-${data.sender_id}`) ||
+                   document.getElementById(`last-${data.receiver_id}`);
 
-    ws.onerror = (err) => {
-        console.error("WebSocket error", err);
+        if (last) last.innerText = data.content;
+
+        renderMessages();
+
+        // ✅ refresh status
+        if (currentChat && currentChat !== "group") {
+            updateHeader();
+        }
     };
 }
 
@@ -424,12 +172,7 @@ function connectWebSocket() {
 function sendMessage() {
     let msg = document.getElementById("message").value;
 
-    if (!msg) return;
-
-    if (!currentChat) {
-        alert("Select chat first");
-        return;
-    }
+    if (!msg || !currentChat) return;
 
     if (currentChat === "group") {
         ws.send(JSON.stringify({
@@ -448,6 +191,73 @@ function sendMessage() {
     document.getElementById("message").value = "";
 }
 
+// 🔹 TYPING SEND
+document.getElementById("message").addEventListener("input", () => {
+    if (currentChat && currentChat !== "group") {
+        ws.send(JSON.stringify({
+            type: "typing",
+            receiver_id: currentChat
+        }));
+    }
+});
+
+// 🔹 SHOW TYPING
+function showTyping() {
+    const header = document.getElementById("chatTitle");
+    header.innerText = "Typing... ✍️";
+
+    setTimeout(async () => {
+        await updateHeader();   // ✅ FIX
+    }, 1500);
+}
+
+// 🔹 UPDATE HEADER (FINAL)
+async function updateHeader() {
+    if (!currentChat) return;
+
+    let name = currentChat === "group"
+        ? "👥 Group 1"
+        : "👤 User " + currentChat;
+
+    if (currentChat === "group") {
+        document.getElementById("chatTitle").innerText =
+            name + " (👥 Group Chat)";
+        return;
+    }
+
+    try {
+        let res = await fetch(`http://127.0.0.1:8000/status/${currentChat}`);
+        let data = await res.json();
+
+        let statusText = "";
+
+        if (data.status === "online") {
+            statusText = "🟢 Online";
+        } else if (data.last_seen) {
+            let t = new Date(data.last_seen).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+            statusText = "🔴 Last seen " + t;
+        } else {
+            statusText = "🔴 Offline";
+        }
+
+        document.getElementById("chatTitle").innerText =
+            name + " (" + statusText + ")";
+    } catch {
+        document.getElementById("chatTitle").innerText =
+            name + " (Unknown)";
+    }
+}
+
+// 🔹 AUTO REFRESH STATUS
+setInterval(() => {
+    if (currentChat && currentChat !== "group") {
+        updateHeader();
+    }
+}, 5000);
+
 // 🔹 RENDER
 function renderMessages() {
     const chatBox = document.getElementById("chat");
@@ -463,13 +273,21 @@ function renderMessages() {
         const msg = document.createElement("div");
         msg.className = "message";
 
-        if (data.sender_id === getMyId()) {
-            msg.classList.add("me");
-        } else {
-            msg.classList.add("other");
-        }
+        if (data.sender_id === getMyId()) msg.classList.add("me");
+        else msg.classList.add("other");
 
-        msg.innerText = data.content;
+        let time = data.timestamp
+            ? new Date(data.timestamp).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit"
+            })
+            : "";
+
+        msg.innerHTML = `
+            <div>${data.content}</div>
+            <div style="font-size:10px;text-align:right;opacity:0.6">${time}</div>
+        `;
+
         chatBox.appendChild(msg);
     });
 
